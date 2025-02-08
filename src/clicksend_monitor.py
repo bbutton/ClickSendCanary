@@ -28,43 +28,58 @@ class ClicksendSMSProvider:
         self.api_client = clicksend_client.ApiClient(self.configuration)
         self.sms_api = clicksend_client.SMSApi(self.api_client)
 
+
     def get_sms_history(self, **kwargs):
         """
-        Retrieves SMS history using the Clicksend SDK.
-        Accepts any keyword arguments the SDK method supports.
+        Retrieves SMS history from a single API call using the ClickSend SDK.
         Returns:
-            A list of SMS history items extracted from the paginated response.
+            A list of SMS messages extracted from the 'data' key of the response.
         """
         try:
             api_response = self.sms_api.sms_history_get(**kwargs)
 
-            # If the response is bytes, decode it to a string.
+            # If it's bytes, decode it to a string.
             if isinstance(api_response, bytes):
                 api_response = api_response.decode('utf-8')
 
-            # If the response is a string, try parsing it as JSON.
+            # If the response is a string, try to parse it as JSON.
             if isinstance(api_response, str):
                 try:
                     api_response = json.loads(api_response)
                 except json.JSONDecodeError:
-                    # Fallback: if it's a Python literal string with single quotes.
+                    # Fallback: use ast.literal_eval if JSON parsing fails.
                     api_response = ast.literal_eval(api_response)
 
-            # If the response has a to_dict() method (common with SDK models), convert it.
+            # If the response is an SDK model, convert it to a dict.
             if hasattr(api_response, "to_dict"):
                 api_response = api_response.to_dict()
 
-            # Now, assume we have a dictionary. The paginated response should have a "data" key.
+            # At this point, we expect a dict.
             if isinstance(api_response, dict):
-                return api_response.get("data", [])
+                # Check if there's a "data" key.
+                if "data" in api_response:
+                    data_field = api_response["data"]
+                    # If the "data" key contains a list, return it.
+                    if isinstance(data_field, list):
+                        return data_field
+                    # If "data" is a dict that itself contains a "data" key,
+                    # try to extract the list from there.
+                    elif isinstance(data_field, dict) and "data" in data_field and isinstance(data_field["data"], list):
+                        return data_field["data"]
+                    else:
+                        # Debug print: show the response so we can inspect its structure.
+                        return []
+                else:
+                    # No "data" key exists—print out the response for debugging.
+                    return []
 
-            # Fallback: if we have an object with a data attribute.
+            # Fallback: if it’s an object with a data attribute.
             if hasattr(api_response, "data"):
                 result = api_response.data
                 if hasattr(result, "to_dict"):
                     result = result.to_dict()
-                if isinstance(result, dict):
-                    return result.get("data", [])
+                if isinstance(result, dict) and "data" in result and isinstance(result["data"], list):
+                    return result["data"]
                 return result
 
             raise ValueError("Unexpected response format from ClickSend API")

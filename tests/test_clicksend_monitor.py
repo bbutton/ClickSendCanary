@@ -13,33 +13,30 @@ class TestClicksendSMSProvider(unittest.TestCase):
     @patch('clicksend_client.SMSApi.sms_history_get')
     def test_get_sms_history_returns_list(self, mock_sms_history_get):
         # Define a fake API response with a 'data' attribute.
-        fake_data = {
+        fake_response = {
+            "total": 1,
+            "per_page": 10,
+            "current_page": 1,
+            "last_page": 1,
+            "next_page_url": None,
+            "prev_page_url": None,
+            "from": 1,
+            "to": 1,
             "data": [
-                {
-                    "message_id": "123456",
-                    "to": "+15555555555",
-                    "body": "Test message",
-                    "status": "SUCCESS",
-                    "date": "2020-01-01 00:00:00"
-                }
+                {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS"}
             ]
         }
 
-        # Create a simple fake response object.
-        class FakeResponse:
-            def __init__(self, data):
-                self.data = data
-
         # Patch the sdk method to return our fake response.
-        mock_sms_history_get.return_value = FakeResponse(fake_data["data"])
+        mock_sms_history_get.return_value = fake_response
 
         # Call our provider method.
-        history = self.provider.get_sms_history()
+        result = self.provider.get_sms_history()
 
         # Verify that the returned history is a list with our expected content.
-        self.assertIsInstance(history, list)
-        self.assertGreater(len(history), 0)
-        self.assertEqual(history[0]['message_id'], "123456")
+        self.assertIsInstance(result, list)
+        self.assertGreater(len(result), 0)
+        self.assertEqual(result[0]['message_id'], "123")
 
 if __name__ == '__main__':
     unittest.main()

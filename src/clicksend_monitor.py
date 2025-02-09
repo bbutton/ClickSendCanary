@@ -87,3 +87,51 @@ class ClicksendSMSProvider:
         except ApiException as e:
             print(f"Exception when calling SMSApi->sms_history_get: {e}")
             raise
+
+
+    def get_all_sms_history(self, **kwargs):
+        """
+        Retrieves SMS history across all pages by automatically paginating
+        through the results.
+
+        Assumes that the API response contains pagination metadata:
+          - 'current_page': the current page number.
+          - 'last_page': the total number of pages.
+          - 'data': the list of SMS messages for that page.
+
+        Returns:
+            A combined list of SMS messages from all pages.
+        """
+        all_messages = []
+        page = 1
+        while True:
+            # Include the page number in the API call.
+            response = self.sms_api.sms_history_get(page=page, **kwargs)
+
+            # Normalize the response.
+            if isinstance(response, bytes):
+                response = response.decode('utf-8')
+            if isinstance(response, str):
+                try:
+                    response = json.loads(response)
+                except json.JSONDecodeError:
+                    response = ast.literal_eval(response)
+            if hasattr(response, "to_dict"):
+                response = response.to_dict()
+            if not isinstance(response, dict):
+                raise ValueError("Unexpected response format from ClickSend API")
+
+            # Extract messages from the 'data' key.
+            page_messages = response.get("data", [])
+            all_messages.extend(page_messages)
+
+            # Check pagination details.
+            current_page = response.get("current_page", page)
+            last_page = response.get("last_page", current_page)
+
+            # If we're on the last page, exit the loop.
+            if current_page >= last_page:
+                break
+            page += 1
+
+        return all_messages

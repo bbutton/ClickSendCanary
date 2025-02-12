@@ -1,7 +1,8 @@
 import os
+import json
+import ast
 import clicksend_client
 from clicksend_client.rest import ApiException
-
 
 class ClicksendSMSProvider:
     def __init__(self, username=None, api_key=None):
@@ -26,23 +27,42 @@ class ClicksendSMSProvider:
         self.api_client = clicksend_client.ApiClient(self.configuration)
         self.sms_api = clicksend_client.SMSApi(self.api_client)
 
+    def _get_normalized_response(self, **kwargs):
+        """
+        Helper method that calls the ClickSend API and normalizes the response.
+        It now supports responses that are either dictionaries, SDK objects (via to_dict),
+        or plain JSON strings.
+
+        Returns:
+            A normalized dictionary containing the API response.
+        """
+        response = self.sms_api.sms_history_get(**kwargs)
+
+        # If the response is a string, try to parse it as JSON.
+        if isinstance(response, str):
+            try:
+                response = json.loads(response)
+            except json.JSONDecodeError:
+                # Fallback: use ast.literal_eval if JSON parsing fails.
+                response = ast.literal_eval(response)
+
+        # If the response is an SDK model, convert it to a dict.
+        if hasattr(response, "to_dict"):
+            response = response.to_dict()
+
+        if not isinstance(response, dict):
+            raise ValueError("Unexpected response format from ClickSend API")
+
+        return response
+
     def get_sms_history(self, **kwargs):
         """
         Retrieves SMS history from a single API call using the ClickSend SDK.
         Returns:
             A list of SMS messages extracted from the 'data' key of the response.
         """
-        try:
-            api_response = self.sms_api.sms_history_get(**kwargs)
-            # If the response is an SDK model, convert it to a dict.
-            if hasattr(api_response, "to_dict"):
-                api_response = api_response.to_dict()
-            if not isinstance(api_response, dict):
-                raise ValueError("Unexpected response format from ClickSend API")
-            return api_response.get("data", [])
-        except ApiException as e:
-            print(f"Exception when calling SMSApi->sms_history_get: {e}")
-            raise
+        response = self._get_normalized_response(**kwargs)
+        return response.get("data", [])
 
     def get_all_sms_history(self, **kwargs):
         """
@@ -53,27 +73,30 @@ class ClicksendSMSProvider:
           - 'current_page': the current page number.
           - 'last_page': the total number of pages.
           - 'data': the list of SMS messages for that page.
+          - 'next_page_url': a relative URL indicating the next page,
+                             e.g. "/?page=2".
 
         Returns:
             A combined list of SMS messages from all pages.
+
+        Raises:
+            ValueError: if the next_page_url in the response does not match
+                        the expected value.
         """
         all_messages = []
         page = 1
         while True:
-            response = self.sms_api.sms_history_get(page=page, **kwargs)
-            if hasattr(response, "to_dict"):
-                response = response.to_dict()
-            if not isinstance(response, dict):
-                raise ValueError("Unexpected response format from ClickSend API")
-            # Extract messages from the 'data' key.
+            response = self._get_normalized_response(page=page, **kwargs)
             page_messages = response.get("data", [])
+            if isinstance(page_messages, dict):
+                page_messages = page_messages.get("data", [])
+
             all_messages.extend(page_messages)
 
-            # Check pagination details.
             current_page = response.get("current_page", page)
             last_page = response.get("last_page", current_page)
 
-            # Validate next_page_url if there is another page.
+            # Validate the next_page_url if another page is expected.
             if current_page < last_page:
                 expected_next_url = f"/?page={current_page + 1}"
                 actual_next_url = response.get("next_page_url")

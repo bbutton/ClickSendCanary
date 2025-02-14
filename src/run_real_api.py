@@ -66,6 +66,7 @@ def main():
         except Exception as ex:
             print("An error occurred:", ex)
         finally:
+            print("closing database")
             db.close()
 
         # print("Returned SMS history:")

@@ -4,6 +4,7 @@ import ast
 import clicksend_client
 from clicksend_client.rest import ApiException
 
+
 class ClicksendSMSProvider:
     def __init__(self, username=None, api_key=None):
         """
@@ -87,19 +88,18 @@ class ClicksendSMSProvider:
         page = 1
         while True:
             response = self._get_normalized_response(page=page, **kwargs)
-            page_messages = response.get("data", [])
-            if isinstance(page_messages, dict):
-                page_messages = page_messages.get("data", [])
+
+            top_level_fields = response.get("data", [])
+            current_page = top_level_fields.get("current_page", 1)
+            last_page = top_level_fields.get("last_page", current_page)
+            page_messages = top_level_fields.get("data", [])
 
             all_messages.extend(page_messages)
-
-            current_page = response.get("current_page", page)
-            last_page = response.get("last_page", current_page)
 
             # Validate the next_page_url if another page is expected.
             if current_page < last_page:
                 expected_next_url = f"/?page={current_page + 1}"
-                actual_next_url = response.get("next_page_url")
+                actual_next_url = top_level_fields.get("next_page_url", "missing")
                 if actual_next_url != expected_next_url:
                     raise ValueError(
                         f"Unexpected next_page_url: expected {expected_next_url}, got {actual_next_url}"

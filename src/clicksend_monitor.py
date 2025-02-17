@@ -96,16 +96,7 @@ class ClicksendSMSProvider:
             page_messages = top_level_fields.get("data", [])
 
             all_messages.extend(page_messages)
-
-            # Validate the next_page_url if another page is expected.
-            if current_page < last_page:
-                expected_next_url = f"/?page={current_page + 1}"
-                actual_next_url = top_level_fields.get("next_page_url", "missing")
-                if actual_next_url != expected_next_url:
-                    raise ValueError(
-                        f"Unexpected next_page_url: expected {expected_next_url}, got {actual_next_url}"
-                    )
-
+            print(f"{current_page}/{last_page} read")
             if current_page >= last_page:
                 break
             page += 1

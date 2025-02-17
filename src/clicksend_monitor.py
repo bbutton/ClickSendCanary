@@ -89,15 +89,20 @@ class ClicksendSMSProvider:
         while True:
             response = self._get_normalized_response(page=page, **kwargs)
 
-            top_level_fields = response.get("data", [])
-            current_page = top_level_fields.get("current_page", 1)
-            last_page = top_level_fields.get("last_page", current_page)
-            page_messages = top_level_fields.get("data", [])
+            current_page, last_page, page_messages = self._get_response_data(response)
 
             all_messages.extend(page_messages)
+
             print(f"{current_page}/{last_page} read")
             if current_page >= last_page:
                 break
             page += 1
 
         return all_messages
+
+    def _get_response_data(self, response):
+        top_level_fields = response.get("data", [])
+        current_page = top_level_fields.get("current_page", 1)
+        last_page = top_level_fields.get("last_page", current_page)
+        page_messages = top_level_fields.get("data", [])
+        return current_page, last_page, page_messages

@@ -87,7 +87,6 @@ class ClicksendSMSProvider:
         all_messages = []
         page = 1
         while True:
-            print(f"getting page {page}")
             response = self._get_normalized_response(page=page, **kwargs)
 
             top_level_fields = response.get("data", [])

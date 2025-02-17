@@ -5,13 +5,19 @@ import clicksend_client
 from clicksend_client.rest import ApiException
 
 
+import os
+import clicksend_client
+
 class ClicksendSMSProvider:
-    def __init__(self, username=None, api_key=None):
+    def __init__(self, username=None, api_key=None, sms_api=None):
         """
         Initialize the provider. If username or api_key is not provided,
         the constructor attempts to load them from environment variables:
           - CLICKSEND_USERNAME
           - CLICKSEND_API_KEY
+
+        Optionally, an sms_api instance can be provided to bypass
+        immediate connection setup (useful for testing).
         """
         self.username = username or os.getenv("CLICKSEND_USERNAME")
         self.api_key = api_key or os.getenv("CLICKSEND_API_KEY")
@@ -20,13 +26,21 @@ class ClicksendSMSProvider:
             raise ValueError("Missing Clicksend credentials: "
                              "CLICKSEND_USERNAME and CLICKSEND_API_KEY must be set")
 
-        # Configure the SDK with credentials.
-        self.configuration = clicksend_client.Configuration()
-        self.configuration.username = self.username
-        self.configuration.password = self.api_key
+        # Allow dependency injection for testing.
+        self._sms_api = sms_api
+        self._api_client = None
+        self._configuration = None
 
-        self.api_client = clicksend_client.ApiClient(self.configuration)
-        self.sms_api = clicksend_client.SMSApi(self.api_client)
+    @property
+    def sms_api(self):
+        # Lazy initialization of the API client if not provided.
+        if self._sms_api is None:
+            self._configuration = clicksend_client.Configuration()
+            self._configuration.username = self.username
+            self._configuration.password = self.api_key
+            self._api_client = clicksend_client.ApiClient(self._configuration)
+            self._sms_api = clicksend_client.SMSApi(self._api_client)
+        return self._sms_api
 
     def _get_normalized_response(self, **kwargs):
         """

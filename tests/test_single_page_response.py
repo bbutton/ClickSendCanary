@@ -15,25 +15,27 @@ class TestSinglePageResponse(unittest.TestCase):
     def test_single_page_response(self, mock_sms_history_get):
         # Simulate a one-page API response.
         single_page_response = {
-            "total": 2,
-            "per_page": 2,
-            "current_page": 1,
-            "last_page": 1,
-            "next_page_url": None,
-            "prev_page_url": None,
-            "from": 1,
-            "to": 2,
-            "data": [
-                {"message_id": "msg1", "to": "+15551112222", "body": "Hello"},
-                {"message_id": "msg2", "to": "+15552223333", "body": "World"}
-            ]
+            "data": {
+                "total": 2,
+                "per_page": 2,
+                "current_page": 1,
+                "last_page": 1,
+                "next_page_url": None,
+                "prev_page_url": None,
+                "from": 1,
+                "to": 2,
+                "data": [
+                    {"message_id": "msg1", "to": "+15551112222", "body": "Hello"},
+                    {"message_id": "msg2", "to": "+15552223333", "body": "World"}
+                ]
+            }
         }
         # The mocked API call returns the simulated response.
         mock_sms_history_get.return_value = single_page_response
 
         # Call get_sms_history and verify it returns the list of messages.
-        result = self.provider.get_sms_history()
-        self.assertEqual(result, single_page_response["data"])
+        result = self.provider.get_all_sms_history()
+        self.assertEqual(result, single_page_response["data"]["data"])
 
 
 if __name__ == '__main__':

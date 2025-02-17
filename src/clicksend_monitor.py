@@ -70,14 +70,14 @@ class ClicksendSMSProvider:
 
         return response
 
-    def get_sms_history(self, **kwargs):
-        """
-        Retrieves SMS history from a single API call using the ClickSend SDK.
-        Returns:
-            A list of SMS messages extracted from the 'data' key of the response.
-        """
-        response = self._get_normalized_response(**kwargs)
-        return response.get("data", [])
+    # def get_sms_history(self, **kwargs):
+    #     """
+    #     Retrieves SMS history from a single API call using the ClickSend SDK.
+    #     Returns:
+    #         A list of SMS messages extracted from the 'data' key of the response.
+    #     """
+    #     response = self._get_normalized_response(**kwargs)
+    #     return response.get("data", [])
 
     def get_all_sms_history(self, **kwargs):
         """

@@ -17,17 +17,21 @@ class TestClicksendSMSProviderResponseHandling(unittest.TestCase):
         self.provider = ClicksendSMSProvider()
 
     @patch('clicksend_client.SMSApi.sms_history_get')
-    def test_get_sms_history_with_dict_response(self, mock_sms_history_get):
+    def test_get_all_sms_history_with_dict_response(self, mock_sms_history_get):
         # Simulate a response that's already a dict.
         fake_data = {
-            "data": [
-                {"message_id": "333", "status": "SUCCESS", "to": "+15553334444"}
-            ]
+            "data": {
+                "current_page": 1,
+                "last_page": 1,
+                "data": [
+                    {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS"}
+                ]
+            }
         }
         mock_sms_history_get.return_value = fake_data
 
-        result = self.provider.get_sms_history()
-        self.assertEqual(result, fake_data["data"])
+        result = self.provider.get_all_sms_history()
+        self.assertEqual(result, fake_data["data"]["data"])
 
 
 if __name__ == '__main__':

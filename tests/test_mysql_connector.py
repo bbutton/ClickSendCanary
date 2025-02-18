@@ -78,7 +78,8 @@ class TestMySQLConnectorInsertData(unittest.TestCase):
             'message_price': '0.05',        # string; should be converted to float 0.05
             'from_email': 'sender@example.com',
             'list_id': 'list001',
-            'carrier': 'TestCarrier'
+            'carrier': 'TestCarrier',
+            'body': 'Test Body'
         }]
 
         # Call insert_data with the sample history.
@@ -87,8 +88,8 @@ class TestMySQLConnectorInsertData(unittest.TestCase):
         # Expected SQL statement.
         expected_sql = (
             "INSERT INTO clicksend_messages "
-            "(message_id, `date`, `to`, status, schedule, status_code, status_text, error_code, error_text, message_parts, message_price, from_email, list_id, carrier) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            "(message_id, `date`, `to`, status, schedule, status_code, status_text, error_code, error_text, message_parts, message_price, from_email, list_id, carrier, body) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         )
 
         # Expected parameter tuple.
@@ -106,7 +107,8 @@ class TestMySQLConnectorInsertData(unittest.TestCase):
             0.05,
             'sender@example.com',
             'list001',
-            'TestCarrier'
+            'TestCarrier',
+            'Test Body'
         )
 
         # Verify that cursor.execute was called once with the expected SQL and parameters.
@@ -119,18 +121,6 @@ class TestMySQLConnectorInsertData(unittest.TestCase):
 
         # Verify that commit was called once.
         mock_connection.commit.assert_called_once()
-
-import os
-import sys
-import unittest
-from unittest.mock import patch, MagicMock
-
-# Insert the repository root into sys.path.
-repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if repo_root not in sys.path:
-    sys.path.insert(0, repo_root)
-
-from src.mysql_connector import MySQLConnector
 
 class TestMySQLConnectorClose(unittest.TestCase):
     @patch('src.mysql_connector.mysql.connector.connect')
@@ -156,9 +146,6 @@ class TestMySQLConnectorClose(unittest.TestCase):
         # Verify that both the cursor's and connection's close methods were called once.
         mock_cursor.close.assert_called_once()
         mock_connection.close.assert_called_once()
-
-if __name__ == '__main__':
-    unittest.main()
 
 if __name__ == '__main__':
     unittest.main()

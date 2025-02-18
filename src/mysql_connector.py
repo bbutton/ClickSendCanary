@@ -17,8 +17,8 @@ class MySQLConnector:
     def insert_data(self, history):
         insert_sql = (
             "INSERT INTO clicksend_messages "
-            "(message_id, `date`, `to`, status, schedule, status_code, status_text, error_code, error_text, message_parts, message_price, from_email, list_id, carrier) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            "(message_id, `date`, `to`, status, schedule, status_code, status_text, error_code, error_text, message_parts, message_price, from_email, list_id, carrier, body) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         )
 
         for item in history:
@@ -36,7 +36,8 @@ class MySQLConnector:
                 float(item.get('message_price')),
                 item.get('from_email'),
                 item.get('list_id'),
-                item.get('carrier')
+                item.get('carrier'),
+                item.get('body')
             )
             self.cursor.execute(insert_sql, data_tuple)
 

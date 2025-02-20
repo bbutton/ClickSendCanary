@@ -12,6 +12,5 @@ def fetch_and_store_messages():
     if not response or "data" not in response or "data" not in response["data"]:
         return  # Gracefully handle missing or malformed responses
 
- #   if "data" in response and "data" in response["data"]:
- #       messages = response["data"]["data"]
- #       store_messages(messages)  # Store the retrieved messages
+    messages = response["data"]["data"]
+    store_messages(messages)  # Store the retrieved messages

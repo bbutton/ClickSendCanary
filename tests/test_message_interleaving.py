@@ -1,29 +1,12 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from src.message_retriever import fetch_and_store_messages
-from src.storage import store_messages
+from src.clicksend_api import fetch_all_messages
 
 class TestMessageRetrieval(unittest.TestCase):
 
-    @patch("src.message_retriever.get_messages")
-    def test_interleaved_fetching_for_single_page(self, mock_get_messages,):
-        # Simulate a single API call returning messages
-        mock_get_messages.return_value = {
-            "data": ["msg1", "msg2"],
-            "next_page": None  # No more pages
-        }
-
-        # Run the function
-        fetch_and_store_messages()
-
-        # Ensure the API was called once
-        mock_get_messages.assert_called_once()
-
-    @patch("src.message_retriever.get_messages")  # Patch where it's used
-    @patch("src.message_retriever.store_messages")  # Patch where it's used
-    def test_fetch_and_store_messages(self, mock_store_messages, mock_get_messages):
-        # Simulated API response
+    @patch("src.clicksend_api.get_messages")
+    def test_fetch_all_messages_single_page(self, mock_get_messages):
         mock_get_messages.return_value = {
             "data": {
                 "current_page": 1,
@@ -34,17 +17,82 @@ class TestMessageRetrieval(unittest.TestCase):
             }
         }
 
-        # Run the function
-        fetch_and_store_messages()
+        messages = list(fetch_all_messages("test_user", "test_key", "2024-02-18 18:00:00", "2024-02-19 17:59:59"))
 
-        # Ensure the API was called once
-        mock_get_messages.assert_called_once()
-
-        # Ensure storage was called with the retrieved messages
-        mock_store_messages.assert_called_once_with([
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0], [
             {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS"}
         ])
+        mock_get_messages.assert_called_once_with("test_user", "test_key", 1708300800, 1708387199, page=1)
 
+    @patch("src.clicksend_api.get_messages")
+    def test_fetch_all_messages_multiple_pages(self, mock_get_messages):
+        mock_get_messages.side_effect = [
+            {
+                "data": {
+                    "current_page": 1,
+                    "last_page": 2,
+                    "data": [
+                        {"message_id": "123", "to": "+15555555555", "body": "Test message 1", "status": "SUCCESS"}
+                    ]
+                }
+            },
+            {
+                "data": {
+                    "current_page": 2,
+                    "last_page": 2,
+                    "data": [
+                        {"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS"}
+                    ]
+                }
+            }
+        ]
 
-if __name__ == "__main__":
-    unittest.main()
+        messages = list(fetch_all_messages("test_user", "test_key", "2024-02-18 18:00:00", "2024-02-19 17:59:59"))
+
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[0], [
+            {"message_id": "123", "to": "+15555555555", "body": "Test message 1", "status": "SUCCESS"}
+        ])
+        self.assertEqual(messages[1], [
+            {"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS"}
+        ])
+        self.assertEqual(mock_get_messages.call_count, 2)
+        mock_get_messages.assert_any_call("test_user", "test_key", 1708300800, 1708387199, page=1)
+        mock_get_messages.assert_any_call("test_user", "test_key", 1708300800, 1708387199, page=2)
+
+@patch("src.message_retriever.store_messages")
+@patch("src.clicksend_api.get_messages")
+def test_fetch_and_store_all_messages(self, mock_get_messages, mock_store_messages):
+    mock_get_messages.side_effect = [
+        {
+            "data": {
+                "current_page": 1,
+                "last_page": 2,
+                "data": [
+                    {"message_id": "123", "to": "+15555555555", "body": "Test message 1", "status": "SUCCESS"}
+                ]
+            }
+        },
+        {
+            "data": {
+                "current_page": 2,
+                "last_page": 2,
+                "data": [
+                    {"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS"}
+                ]
+            }
+        }
+    ]
+
+    fetch_and_store_all_messages("test_user", "test_key", "2024-02-19 00:00:00", "2024-02-19 23:59:59")
+
+    self.assertEqual(mock_get_messages.call_count, 2)
+    self.assertEqual(mock_store_messages.call_count, 2)
+
+    mock_store_messages.assert_any_call([
+        {"message_id": "123", "to": "+15555555555", "body": "Test message 1", "status": "SUCCESS"}
+    ])
+    mock_store_messages.assert_any_call([
+        {"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS"}
+    ])

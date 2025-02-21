@@ -19,7 +19,7 @@ def fetch_all_messages(api_username, api_key, start_time, end_time):
     current_page = 1
 
     while True:
-        response = get_messages(api_username, api_key, start_epoch, end_epoch, page=current_page)
+        response = get_messages(api_username, api_key, start_epoch, end_epoch, current_page)
 
         if not response or "data" not in response or "data" not in response["data"]:
             break

@@ -1,12 +1,32 @@
 # src/clicksend_api.py
 import datetime
+import requests
 
-def get_messages(page = 1):
-    """
-    Placeholder function to allow tests to run.
-    Will be implemented properly once we see test failures.
-    """
-    pass
+def get_messages(api_username, api_key, start_epoch, end_epoch, page=1):
+    url = "https://rest.clicksend.com/v3/messages"
+    params = {
+        "date_from": start_epoch,
+        "date_to": end_epoch,
+        "page": page
+    }
+
+    response = requests.get(url, auth=(api_username, api_key), params=params)
+
+    if response.status_code == 404:
+        print(f"⚠️ API request returned 404: No messages found.")
+        return {"messages": [], "current_page": 1, "last_page": 1}  # ✅ Return an empty response instead of None
+
+    if response.status_code != 200:
+        print(f"❌ API request failed with status {response.status_code}")
+        return None
+
+    response_data = response.json().get("data", {})
+
+    return {
+        "messages": response_data.get("data", []),
+        "current_page": response_data.get("current_page", 1),
+        "last_page": response_data.get("last_page", 1)
+    }
 
 def convert_to_epoch(date_string):
     dt = datetime.datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")

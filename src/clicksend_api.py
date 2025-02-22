@@ -2,6 +2,8 @@
 import datetime
 import requests
 
+import requests
+
 def get_messages(api_username, api_key, start_epoch, end_epoch, page=1):
     url = "https://rest.clicksend.com/v3/messages"
     params = {
@@ -13,40 +15,39 @@ def get_messages(api_username, api_key, start_epoch, end_epoch, page=1):
     response = requests.get(url, auth=(api_username, api_key), params=params)
 
     if response.status_code == 404:
-        print(f"⚠️ API request returned 404: No messages found.")
-        return {"messages": [], "current_page": 1, "last_page": 1}  # ✅ Return an empty response instead of None
+        return [], 404, None  # ✅ Return empty list, status code 404
 
     if response.status_code != 200:
-        print(f"❌ API request failed with status {response.status_code}")
-        return None
+        return None, response.status_code, None  # ✅ Return None, any error code
 
     response_data = response.json().get("data", {})
 
-    return {
-        "messages": response_data.get("data", []),
-        "current_page": response_data.get("current_page", 1),
-        "last_page": response_data.get("last_page", 1)
-    }
+    return response_data.get("data", []), 200, response_data.get("last_page", page)
 
 def convert_to_epoch(date_string):
     dt = datetime.datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
     return int(dt.timestamp())
 
 def fetch_all_messages(api_username, api_key, start_time, end_time):
-
     start_epoch = convert_to_epoch(start_time)
     end_epoch = convert_to_epoch(end_time)
     current_page = 1
+    last_page = None  # ✅ Track last_page
 
-    while True:
-        response = get_messages(api_username, api_key, start_epoch, end_epoch, current_page)
+    while last_page is None or current_page <= last_page:
+        print(f"Calling get_messages() with page={current_page}")
 
-        if not response or "data" not in response or "data" not in response["data"]:
-            break
+        messages, status_code, last_page = get_messages(api_username, api_key, start_epoch, end_epoch, current_page)
 
-        yield response["data"]["data"]
+        print(f"fetch_all_messages(): Yielding messages={messages}, status_code={status_code}, last_page={last_page}")
 
-        if response["data"]["current_page"] >= response["data"]["last_page"]:
-            break
+        if messages is None:  # API error like 500
+            yield None, status_code
+            return  # Stop fetching on critical failure
+
+        yield messages, status_code
+
+        if status_code != 200 or not messages:  # Stop on failure or empty data
+            return
 
         current_page += 1

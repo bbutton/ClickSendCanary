@@ -35,11 +35,7 @@ def fetch_all_messages(api_username, api_key, start_time, end_time):
     last_page = None  # ✅ Track last_page
 
     while last_page is None or current_page <= last_page:
-        print(f"Calling get_messages() with page={current_page}")
-
         messages, status_code, last_page = get_messages(api_username, api_key, start_epoch, end_epoch, current_page)
-
-        print(f"fetch_all_messages(): Yielding messages={messages}, status_code={status_code}, last_page={last_page}")
 
         if messages is None:  # API error like 500
             yield None, status_code

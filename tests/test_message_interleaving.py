@@ -45,12 +45,7 @@ class TestFetchAndStoreMessages(unittest.TestCase):
 
         mock_fetch_all_messages.return_value = mock_fetch()  # ✅ Return generator
 
-        print(f"Mocked function calls before execution: {mock_fetch_all_messages.call_args_list}")
-
         messages_stored, error_code = fetch_and_store_all_messages("test_user", "test_key", "2024-02-19 00:00:00", "2024-02-19 23:59:59")
-
-        print(f"Test result - messages_stored: {messages_stored}, error_code: {error_code}")
-        print(f"Mocked function calls after execution: {mock_fetch_all_messages.call_args_list}")
 
         self.assertEqual(2, messages_stored)  # ✅ Should store 2 messages
         self.assertEqual(200, error_code)

@@ -14,7 +14,7 @@ class TestS3Storage(unittest.TestCase):
         mock_convert_to_parquet.return_value = b"fake-parquet-data"
 
         messages = [
-            {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS", "date": "2024-02-19 14:30:00"}
+            {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS", "date": "1708387199"}
         ]
 
         store_messages(messages)

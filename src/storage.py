@@ -5,6 +5,7 @@ import boto3
 import io
 import os
 from datetime import datetime
+from src.time_utils import convert_from_epoch
 
 def convert_to_parquet(messages):
     """
@@ -35,7 +36,7 @@ def store_messages(messages):
 
     parquet_data = convert_to_parquet(messages)
 
-    timestamp = datetime.strptime(messages[0]["date"], "%Y-%m-%d %H:%M:%S")
+    timestamp = convert_from_epoch(messages[0]["date"])
     s3_key = f"sms-logs/year={timestamp.year}/month={timestamp.month:02}/day={timestamp.day:02}/messages.parquet"
 
     response = s3_client.put_object(Bucket=s3_bucket, Key=s3_key, Body=parquet_data)

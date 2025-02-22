@@ -26,6 +26,8 @@ def get_s3_client():
     return boto3.client("s3", endpoint_url=s3_endpoint), s3_bucket
 
 def store_messages(messages):
+    print(f"attempting to store messages: {len(messages)}")
+
     if not messages:
         return
 
@@ -33,7 +35,7 @@ def store_messages(messages):
 
     parquet_data = convert_to_parquet(messages)
 
-    timestamp = datetime.strptime(messages[0]["timestamp"], "%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.strptime(messages[0]["date"], "%Y-%m-%d %H:%M:%S")
     s3_key = f"sms-logs/year={timestamp.year}/month={timestamp.month:02}/day={timestamp.day:02}/messages.parquet"
 
     response = s3_client.put_object(Bucket=s3_bucket, Key=s3_key, Body=parquet_data)

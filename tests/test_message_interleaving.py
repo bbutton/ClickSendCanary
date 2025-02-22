@@ -27,29 +27,41 @@ class TestFetchAndStoreMessages(unittest.TestCase):
             {"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS"}
         ])
 
-    @patch("src.message_retriever.store_messages")
-    @patch("src.clicksend_api.fetch_all_messages")
+    @patch("src.message_retriever.store_messages")  # ✅ Mock S3 storage
+    @patch("src.message_retriever.fetch_all_messages")  # ✅ Mock API retrieval where it is USED
     def test_no_messages_fetched_nothing_stored(self, mock_fetch_all_messages, mock_store_messages):
-        mock_fetch_all_messages.return_value = iter([[]])  # Simulates API returning no messages
+        def mock_fetch():
+            yield ([], 200)  # ✅ Ensures messages is an empty list, not None
 
-        fetch_and_store_all_messages("test_user", "test_key", "2024-02-19 00:00:00", "2024-02-19 23:59:59")
+        mock_fetch_all_messages.return_value = mock_fetch()  # ✅ Return mocked generator
 
+        messages_stored, error_code = fetch_and_store_all_messages(
+            "test_user", "test_key", "2024-02-19 00:00:00", "2024-02-19 23:59:59"
+        )
+
+        print(f"Messages Stored: {messages_stored}, Error Code: {error_code}")
+        print(f"Mock Calls: {mock_store_messages.call_args_list}")
+
+        self.assertEqual(messages_stored, 0)  # ✅ Ensure no messages are counted
+        self.assertEqual(error_code, 200)  # ✅ Ensure no error occurred
         mock_store_messages.assert_not_called()  # ✅ Ensure storage is NOT called
 
-    @patch("src.message_retriever.store_messages")
-    @patch("src.message_retriever.fetch_all_messages")
+    @patch("src.message_retriever.store_messages")  # ✅ Mock S3 storage
+    @patch("src.message_retriever.fetch_all_messages")  # ✅ Mock API message retrieval
     def test_fetch_and_store_all_messages_stores_messages(self, mock_fetch_all_messages, mock_store_messages):
         def mock_fetch():
-            yield ([{"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS"}], 200)  # ✅ Removed last_page
-            yield ([{"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS"}], 200)  # ✅ Removed last_page
+            yield ([{"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS"}], 200)
+            yield ([{"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS"}], 200)
 
         mock_fetch_all_messages.return_value = mock_fetch()  # ✅ Return generator
 
-        messages_stored, error_code = fetch_and_store_all_messages("test_user", "test_key", "2024-02-19 00:00:00", "2024-02-19 23:59:59")
+        messages_stored, error_code = fetch_and_store_all_messages(
+            "test_user", "test_key", "2024-02-19 00:00:00", "2024-02-19 23:59:59"
+        )
 
         self.assertEqual(2, messages_stored)  # ✅ Should store 2 messages
         self.assertEqual(200, error_code)
-        self.assertEqual(2, mock_store_messages.call_count)
+        self.assertEqual(2, mock_store_messages.call_count)  # ✅ Ensure store_messages() was called twice
 
     @patch("src.message_retriever.store_messages")
     @patch("src.message_retriever.fetch_all_messages")

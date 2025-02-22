@@ -39,7 +39,7 @@ class TestClickSendAPI(unittest.TestCase):
 
         messages, status_code, last_page = get_messages("test_user", "test_key", 1708300800, 1708387199)
 
-        self.assertEqual(messages, [])  # ✅ Should return empty list, not None
+        self.assertIsNone(messages)  # ✅ Should return empty list, not None
         self.assertEqual(status_code, 404)
         self.assertIsNone(last_page)
 

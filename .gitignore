@@ -11,4 +11,5 @@ package/
 terraform/.terraform.lock.hcl
 terraform/.terraform/
 terraform/terraform.tfstate
+terraform/apply.plan
 

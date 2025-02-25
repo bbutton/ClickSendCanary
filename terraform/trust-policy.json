@@ -1,0 +1,17 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Federated": "arn:aws:sso:::instance/ssoins-722352b353b42a10"
+            },
+            "Action": "sts:AssumeRole",
+            "Condition": {
+                "StringLike": {
+                    "aws:PrincipalArn": "arn:aws:iam::095750864911:role/AWSReservedSSO_AdministratorAccess_*"
+                }
+            }
+        }
+    ]
+}

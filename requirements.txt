@@ -1,4 +1,1 @@
 requests
-pandas
-pyarrow  # Required for Parquet format handling
-boto3  # AWS SDK (optional, included by AWS Lambda runtime)

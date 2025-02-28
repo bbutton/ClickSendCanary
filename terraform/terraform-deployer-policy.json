@@ -24,12 +24,12 @@
                 "iam:CreateRole",
                 "iam:AttachRolePolicy",
                 "iam:PassRole",
-                "iam:GetRole",
-                "iam:ListRoles",
+                "iam:List*",
                 "iam:CreatePolicy",
                 "iam:DeleteRole",
                 "iam:DetachRolePolicy",
-                "iam:DeletePolicy"
+                "iam:DeletePolicy",
+                "iam:Get*"
             ],
             "Resource": "*"
         },
@@ -40,22 +40,36 @@
                 "s3:DeleteBucket",
                 "s3:PutBucketPolicy",
                 "s3:GetBucketPolicy",
-                "s3:ListBucket",
-                "s3:PutObject",
-                "s3:GetObject",
+                "s3:List*",
+                "s3:Put*",
+                "s3:Get*",
                 "s3:DeleteObject"
             ],
-            "Resource": "*"
+            "Resource": [
+                "arn:aws:s3:::clicksend-canary-data",
+                "arn:aws:s3:::clicksend-canary-data/*"
+            ]
         },
         {
             "Effect": "Allow",
             "Action": [
                 "lambda:CreateFunction",
+                "lambda:Update*",
                 "lambda:DeleteFunction",
-                "lambda:GetFunction",
-                "lambda:UpdateFunctionCode",
+                "lambda:Get*",
+                "lambda:InvokeFunction",
+                "lambda:AddPermission",
+                "lambda:RemovePermission",
                 "lambda:UpdateFunctionConfiguration",
                 "lambda:ListFunctions"
+            ],
+            "Resource": "arn:aws:lambda:us-east-1:095750864911:function:ClickSendCanary"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:ListVersionsByFunction",
+                "lambda:GetFunctionCodeSigningConfig"
             ],
             "Resource": "*"
         },
@@ -64,9 +78,39 @@
             "Action": [
                 "logs:CreateLogGroup",
                 "logs:CreateLogStream",
-                "logs:PutLogEvents"
+                "logs:PutLogEvents",
+                "logs:DescribeLogStreams",
+                "logs:GetLogEvents"
             ],
-            "Resource": "*"
+            "Resource": "arn:aws:logs:us-east-1:095750864911:*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:PutParameter",
+                "ssm:DeleteParameter",
+                "ssm:DescribeParameters"
+            ],
+            "Resource": [
+                "arn:aws:ssm:us-east-1:095750864911:parameter/clicksend/username",
+                "arn:aws:ssm:us-east-1:095750864911:parameter/clicksend/api_key",
+                "arn:aws:ssm:us-east-1:095750864911:parameter/s3/bucket"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "events:PutRule",
+                "events:DeleteRule",
+                "events:DescribeRule",
+                "events:EnableRule",
+                "events:DisableRule",
+                "events:PutTargets",
+                "events:RemoveTargets",
+                "events:List*"
+            ],
+            "Resource": "arn:aws:events:us-east-1:095750864911:rule/clicksend-canary-schedule"
         }
     ]
 }

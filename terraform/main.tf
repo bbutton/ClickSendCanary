@@ -9,7 +9,6 @@ terraform {
 
 provider "aws" {
   region  = "us-east-1"  # ✅ Change to your AWS region
-  profile = "terraform-deployer"  # ✅ Ensure you're using a limited IAM user
 }
 
 # ✅ Define S3 Bucket using the Parameter Store Value

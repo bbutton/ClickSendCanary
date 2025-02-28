@@ -1,5 +1,6 @@
 import unittest
-import pandas as pd
+import pyarrow.parquet as pq
+import pyarrow as pa
 import io
 from src.storage import convert_to_parquet
 
@@ -13,13 +14,17 @@ class TestParquetConversion(unittest.TestCase):
 
         parquet_data = convert_to_parquet(messages)
 
-        # Read back Parquet data to verify correctness
-        df = pd.read_parquet(io.BytesIO(parquet_data))
+        # Read back Parquet data to verify correctness using PyArrow
+        buffer = io.BytesIO(parquet_data)
+        table = pq.read_table(buffer)
 
-        self.assertEqual(len(df), 2)  # Should store two messages
-        self.assertIn("message_id", df.columns)
-        self.assertEqual(df.iloc[0]["message_id"], "123")
-        self.assertEqual(df.iloc[1]["message_id"], "456")
+        # Convert PyArrow table to dictionary for easier validation
+        df_dict = table.to_pydict()
+
+        self.assertEqual(len(df_dict["message_id"]), 2)  # Should store two messages
+        self.assertIn("message_id", df_dict)
+        self.assertEqual(df_dict["message_id"][0], "123")
+        self.assertEqual(df_dict["message_id"][1], "456")
 
 if __name__ == "__main__":
     unittest.main()

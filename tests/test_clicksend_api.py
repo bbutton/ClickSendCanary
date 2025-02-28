@@ -66,7 +66,7 @@ class TestMessageRetrieval(unittest.TestCase):
             1  # ✅ Added last_page
         )
 
-        messages = list(fetch_all_messages("test_user", "test_key", "2024-02-18 18:00:00", "2024-02-19 17:59:59"))
+        messages = list(fetch_all_messages("test_user", "test_key", "2024-02-19 00:00:00", "2024-02-19 23:59:59"))
 
         self.assertEqual(len(messages), 1)
 
@@ -96,7 +96,7 @@ class TestMessageRetrieval(unittest.TestCase):
             )
         ]
 
-        messages = list(fetch_all_messages("test_user", "test_key", "2024-02-18 18:00:00", "2024-02-19 17:59:59"))
+        messages = list(fetch_all_messages("test_user", "test_key", "2024-02-19 00:00:00", "2024-02-19 23:59:59"))
 
         self.assertEqual(len(messages), 2)
 

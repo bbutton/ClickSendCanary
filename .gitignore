@@ -14,3 +14,4 @@ terraform/terraform.tfstate
 terraform/apply.plan
 
 .swp
+aws_creds.json

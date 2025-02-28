@@ -3,9 +3,13 @@ import json
 from src.message_retriever import fetch_and_store_all_messages
 
 # Conditionally load .env ONLY for local development
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-    load_dotenv()
+# ✅ Load dotenv only when NOT running in AWS Lambda
+if os.getenv("AWS_EXECUTION_ENV") is None:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass  # ✅ Ignore if dotenv is missing in AWS Lambda
 
 def lambda_handler(event, context):
     """

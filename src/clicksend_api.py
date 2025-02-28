@@ -1,13 +1,17 @@
 # src/clicksend_api.py
 import os
 import datetime
-from dotenv import load_dotenv
 import requests
 from src.time_utils import convert_to_epoch
 
-# ✅ Explicitly load `.env` from the project root
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+import os
 
+# ✅ Load dotenv only when running locally
+if os.getenv("AWS_EXECUTION_ENV") is None:  # AWS Lambda sets this variable
+    from dotenv import load_dotenv
+    load_dotenv()
+
+# ✅ Environment variables (works both locally & in Lambda)
 CLICKSEND_API_URL = os.getenv("CLICKSEND_API_URL", "https://rest.clicksend.com/v3/sms/history")
 
 def get_messages(api_username, api_key, start_epoch:int, end_epoch:int, page=1):

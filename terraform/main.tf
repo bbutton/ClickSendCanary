@@ -66,6 +66,36 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
 
+resource "aws_iam_policy" "s3_access" {
+  name        = "ClickSendCanaryS3Policy"
+  description = "Allows Lambda to write to S3"
+  policy      = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ]
+        Resource = "arn:aws:s3:::clicksend-canary-data/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = "arn:aws:s3:::clicksend-canary-data"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "s3_attach" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.s3_access.arn
+}
+
 # ✅ Retrieve Secrets from AWS SSM Parameter Store
 data "aws_ssm_parameter" "clicksend_username" {
   name            = "/clicksend/username"
@@ -98,6 +128,7 @@ resource "aws_lambda_function" "clicksend_canary" {
       CLICKSEND_USERNAME = data.aws_ssm_parameter.clicksend_username.value
       CLICKSEND_API_KEY  = data.aws_ssm_parameter.clicksend_api_key.value
       S3_BUCKET         = data.aws_ssm_parameter.s3_bucket.value
+      S3_ENDPOINT       = "https://s3.amazonaws.com"
     }
   }
 }

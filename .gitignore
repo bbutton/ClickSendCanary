@@ -16,3 +16,5 @@ terraform/apply.plan
 .swp
 aws_creds.json
 *.backup
+.installed-dependencies
+response.json

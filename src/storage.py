@@ -26,9 +26,18 @@ def store_messages(messages):
 
     # Determine the S3 key path based on the first message's timestamp
     timestamp = convert_from_epoch(int(messages[0]["date"]))
-    s3_key = f"sms-logs/year={timestamp.year}/month={timestamp.month:02}/day={timestamp.day:02}/messages.json"
+    s3_name_timestamp = generate_s3_key(timestamp)
+    s3_key = f"sms-logs/{s3_name_timestamp}"
 
     # Upload JSON data to S3
-    response = s3_client.put_object(Bucket=s3_bucket, Key=s3_key, Body=json_data)
+    response = s3_client.put_object(Bucket=s3_bucket, Key=s3_key, Body=json_data, ContentType="application/json")
 
     print(f"Uploaded {len(messages)} messages to {s3_key}")
+
+def generate_s3_key(timestamp: datetime) -> str:
+    return (
+        f"year={timestamp.strftime('%Y')}/"
+        f"month={timestamp.strftime('%m')}/"
+        f"day={timestamp.strftime('%d')}/"
+        f"messages-{timestamp.strftime('%H-%M-%S')}.json"
+    )

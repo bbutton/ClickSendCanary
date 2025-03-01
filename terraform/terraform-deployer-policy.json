@@ -26,6 +26,7 @@
                 "iam:PassRole",
                 "iam:List*",
                 "iam:CreatePolicy",
+                "iam:CreatePolicyVersion",
                 "iam:DeleteRole",
                 "iam:DetachRolePolicy",
                 "iam:DeletePolicy",
@@ -61,7 +62,8 @@
                 "lambda:AddPermission",
                 "lambda:RemovePermission",
                 "lambda:UpdateFunctionConfiguration",
-                "lambda:ListFunctions"
+                "lambda:ListFunctions",
+                "lambda:DeleteFunctionConcurrency"
             ],
             "Resource": "arn:aws:lambda:us-east-1:095750864911:function:ClickSendCanary"
         },
@@ -112,6 +114,75 @@
                 "events:List*"
             ],
             "Resource": "arn:aws:events:us-east-1:095750864911:rule/clicksend-canary-schedule"
+        },
+                {
+            "Effect": "Allow",
+            "Action": [
+                "athena:StartQueryExecution",
+                "athena:GetQueryExecution",
+                "athena:GetQueryResults",
+                "athena:StopQueryExecution",
+                "athena:ListQueryExecutions",
+                "athena:GetWorkGroup",
+                "athena:CreateWorkGroup",
+                "athena:UpdateWorkGroup",
+                "athena:DeleteWorkGroup",
+                "athena:GetNamedQuery",
+                "athena:ListNamedQueries",
+                "athena:CreateNamedQuery",
+                "athena:DeleteNamedQuery",
+                "athena:GetTableMetadata",
+                "athena:ListDatabases",
+                "athena:ListTableMetadata",
+                "athena:ListTagsForResource"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "glue:CreateDatabase",
+                "glue:DeleteDatabase",
+                "glue:GetDatabase",
+                "glue:GetDatabases",
+                "glue:CreateTable",
+                "glue:DeleteTable",
+                "glue:GetTable",
+                "glue:GetTables",
+                "glue:UpdateTable",
+                "glue:BatchCreatePartition",
+                "glue:BatchDeletePartition",
+                "glue:GetPartition",
+                "glue:GetPartitions",
+                "glue:UpdatePartition",
+                "glue:CreatePartition",
+                "glue:DeletePartition",
+                "glue:GetTags"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::clicksend-canary-data",
+                "arn:aws:s3:::clicksend-canary-data/*",
+                "arn:aws:s3:::aws-athena-query-results-*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:*:*:*"
         }
     ]
 }

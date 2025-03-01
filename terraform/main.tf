@@ -39,7 +39,7 @@ resource "aws_iam_policy" "lambda_policy" {
     Statement = [
       {
         Effect = "Allow",
-        Action = ["s3:PutObject", "s3:GetObject"],
+        Action = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
         Resource = "${aws_s3_bucket.clicksend_canary_data.arn}/*"
       },
       {
@@ -55,6 +55,25 @@ resource "aws_iam_policy" "lambda_policy" {
           "arn:aws:ssm:us-east-1:*:parameter/clicksend/api_key",
           "arn:aws:ssm:us-east-1:*:parameter/s3/bucket"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "athena:StartQueryExecution",
+          "athena:GetQueryExecution",
+          "athena:GetQueryResults"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "glue:GetTable",
+          "glue:GetTables",
+          "glue:GetDatabase",
+          "glue:GetDatabases"
+        ]
+        Resource = "*"
       }
     ]
   })

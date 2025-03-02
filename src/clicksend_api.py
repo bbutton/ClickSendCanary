@@ -36,8 +36,14 @@ def get_messages(api_username, api_key, start_epoch:int, end_epoch:int, page=1):
         return None, response.status_code, None
 
     response_data = response.json().get("data", {})
+    messages = response_data.get("data",[])
 
-    return response_data.get("data", []), response.status_code, response_data.get("last_page", 1)
+    if(messages):
+        for m in messages:
+            if "date" in m:
+                m["sent_date"] = m.pop("date")
+
+    return messages, response.status_code, response_data.get("last_page", 1)
 
 
 def fetch_all_messages(api_username, api_key, start_time:str, end_time:str):

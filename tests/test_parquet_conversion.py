@@ -8,8 +8,8 @@ class TestParquetConversion(unittest.TestCase):
 
     def test_convert_messages_to_parquet(self):
         messages = [
-            {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS", "timestamp": "2024-02-19 14:30:00"},
-            {"message_id": "456", "to": "+15555555555", "body": "Another message", "status": "FAILED", "timestamp": "2024-02-19 15:00:00"}
+            {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS", "sent_date": "12341234"},
+            {"message_id": "456", "to": "+15555555555", "body": "Another message", "status": "FAILED", "sent_date": "23452345"}
         ]
 
         parquet_data = convert_to_parquet(messages)
@@ -25,6 +25,8 @@ class TestParquetConversion(unittest.TestCase):
         self.assertIn("message_id", df_dict)
         self.assertEqual(df_dict["message_id"][0], "123")
         self.assertEqual(df_dict["message_id"][1], "456")
+        self.assertEqual(df_dict["sent_date"][0], "12341234")
+        self.assertEqual(df_dict["sent_date"][1], "23452345")
 
 if __name__ == "__main__":
     unittest.main()

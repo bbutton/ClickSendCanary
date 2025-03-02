@@ -18,7 +18,7 @@ class TestStorage(unittest.TestCase):
         timestamp = convert_from_epoch(first_message_epoch)  # ✅ Convert to datetime
         expected_key = f"sms-logs/year={timestamp.strftime('%Y')}/month={timestamp.strftime('%m')}/day={timestamp.strftime('%d')}/messages-{timestamp.strftime('%H-%M-%S')}.parquet"
 
-        messages = [{"message_id": "123", "status": "delivered", "date": first_message_epoch}]
+        messages = [{"message_id": "123", "status": "delivered", "sent_date": first_message_epoch}]
 
         store_messages(messages)
 

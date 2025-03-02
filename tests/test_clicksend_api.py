@@ -17,7 +17,7 @@ class TestClickSendAPI(unittest.TestCase):
                 "current_page": 1,
                 "last_page": 3,
                 "data": [
-                    {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS"}
+                    {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS", "date": 12341234}
                 ]
             }
         }
@@ -25,7 +25,7 @@ class TestClickSendAPI(unittest.TestCase):
         messages, status_code, last_page = get_messages("test_user", "test_key", 1708300800, 1708387199)
 
         expected_messages = [
-            {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS"}
+            {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS", "sent_date": 12341234}
         ]
         self.assertEqual(messages, expected_messages)
         self.assertEqual(status_code, 200)
@@ -60,7 +60,7 @@ class TestMessageRetrieval(unittest.TestCase):
     def test_fetch_all_messages_single_page(self, mock_get_messages):
         mock_get_messages.return_value = (
             [  # ✅ Updated to return messages as a list
-                {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS"}
+                {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS", "sent_date": 23452345}
             ],
             200,  # ✅ Added status_code
             1  # ✅ Added last_page
@@ -72,7 +72,7 @@ class TestMessageRetrieval(unittest.TestCase):
 
         extracted_messages, status_code = messages[0]
         self.assertEqual(extracted_messages, [
-            {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS"}
+            {"message_id": "123", "to": "+15555555555", "body": "Test message", "status": "SUCCESS", "sent_date": 23452345}
         ])
         self.assertEqual(status_code, 200)  # ✅ Also verify status code
         mock_get_messages.assert_called_once_with("test_user", "test_key", 1708300800, 1708387199, 1)
@@ -82,14 +82,14 @@ class TestMessageRetrieval(unittest.TestCase):
         mock_get_messages.side_effect = [
             (
                 [  # ✅ Updated to return messages as a list
-                    {"message_id": "123", "to": "+15555555555", "body": "Test message 1", "status": "SUCCESS"}
+                    {"message_id": "123", "to": "+15555555555", "body": "Test message 1", "status": "SUCCESS", "sent_date":35463456}
                 ],
                 200,  # ✅ Added status_code
                 2  # ✅ Added last_page
             ),
             (
                 [  # ✅ Second page of messages
-                    {"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS"}
+                    {"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS", "sent_date": 45674567}
                 ],
                 200,  # ✅ Added status_code
                 2  # ✅ Added last_page
@@ -105,12 +105,12 @@ class TestMessageRetrieval(unittest.TestCase):
         extracted_messages_2, status_code_2 = messages[1]
 
         self.assertEqual(extracted_messages_1, [
-            {"message_id": "123", "to": "+15555555555", "body": "Test message 1", "status": "SUCCESS"}
+            {"message_id": "123", "to": "+15555555555", "body": "Test message 1", "status": "SUCCESS", "sent_date":35463456}
         ])
         self.assertEqual(status_code_1, 200)  # ✅ Verify status code
 
         self.assertEqual(extracted_messages_2, [
-            {"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS"}
+            {"message_id": "456", "to": "+15555555555", "body": "Test message 2", "status": "SUCCESS", "sent_date": 45674567}
         ])
         self.assertEqual(status_code_2, 200)  # ✅ Verify status code
         ### CHANGE END

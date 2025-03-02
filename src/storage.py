@@ -37,7 +37,7 @@ def store_messages(messages):
     parquet_data = convert_to_parquet(messages)
 
     # Determine the S3 key path based on the first message's timestamp
-    timestamp = convert_from_epoch(int(messages[0]["date"]))
+    timestamp = convert_from_epoch(int(messages[0]["sent_date"]))
     s3_name_timestamp = generate_s3_key(timestamp)
     s3_key = f"sms-logs/{s3_name_timestamp}"
 

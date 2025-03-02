@@ -37,6 +37,13 @@
         {
             "Effect": "Allow",
             "Action": [
+                "iam:DeletePolicyVersion"
+            ],
+            "Resource": "arn:aws:iam::095750864911:policy/clicksend-canary-lambda-policy"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
                 "s3:CreateBucket",
                 "s3:DeleteBucket",
                 "s3:PutBucketPolicy",
@@ -71,7 +78,9 @@
             "Effect": "Allow",
             "Action": [
                 "lambda:ListVersionsByFunction",
-                "lambda:GetFunctionCodeSigningConfig"
+                "lambda:GetFunctionCodeSigningConfig",
+                "lambda:CreateFunction",
+                "lambda:UpdateFunctionCode"
             ],
             "Resource": "*"
         },
@@ -183,6 +192,28 @@
                 "logs:PutLogEvents"
             ],
             "Resource": "arn:aws:logs:*:*:*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecr:CreateRepository",
+                "ecr:DescribeRepositories",
+                "ecr:ListImages",
+                "ecr:BatchDeleteImage",
+                "ecr:BatchGetImage",
+                "ecr:TagResource",
+                "ecr:PutImage",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:CompleteLayerUpload",
+                "ecr:UploadLayerPart",
+                "ecr:InitiateLayerUpload",
+                "ecr:ListTagsForResource",
+                "ecr:DeleteRepository",
+                "ecr:GetAuthorizationToken",
+                "ecr:GetRepositoryPolicy",
+                "ecr:GetDownloadUrlForLayer"
+            ],
+            "Resource": "*"
         }
     ]
 }

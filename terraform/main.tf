@@ -74,7 +74,24 @@ resource "aws_iam_policy" "lambda_policy" {
           "glue:GetDatabases"
         ]
         Resource = "*"
-      }
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability" ,
+          "ecr:DescribeRepositories",
+          "ecr:ListImages",
+          "ecr:GetRepositoryPolicy"
+        ],
+        Resource = aws_ecr_repository.clicksend_canary.arn
+      },
+      {
+        Effect = "Allow",
+        Action = "ecr:GetAuthorizationToken",
+        Resource = "*"
+      },
     ]
   })
 }
@@ -134,11 +151,8 @@ data "aws_ssm_parameter" "s3_bucket" {
 resource "aws_lambda_function" "clicksend_canary" {
   function_name    = "ClickSendCanary"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "main.lambda_handler"
-  runtime         = "python3.12"
-
-  s3_bucket       = aws_s3_bucket.clicksend_canary_data.id
-  s3_key          = "lambda.zip"  # ✅ Upload this file before running Terraform
+  package_type    = "Image"
+  image_uri       = "${aws_ecr_repository.clicksend_canary.repository_url}:latest"
 
   timeout         = 60
 
@@ -172,4 +186,35 @@ resource "aws_lambda_permission" "allow_cloudwatch" {
   function_name = aws_lambda_function.clicksend_canary.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.every_10_minutes.arn
+}
+
+resource "aws_ecr_repository" "clicksend_canary" {
+  name                 = "clicksend-canary"
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+  encryption_configuration {
+    encryption_type = "AES256"
+  }
+}
+
+resource "aws_ecr_repository_policy" "clicksend_canary_ecr_policy" {
+  repository = aws_ecr_repository.clicksend_canary.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        },
+        Action = [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability"
+        ]
+      }
+    ]
+  })
 }

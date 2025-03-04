@@ -2,18 +2,33 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.60.0"  # ✅ Use a stable version instead of latest
+      version = "~> 5.60.0"
     }
   }
 }
 
 provider "aws" {
-  region  = "us-east-1"  # ✅ Change to your AWS region
+  region  = "us-east-1"
 }
 
-# ✅ Define S3 Bucket using the Parameter Store Value
+# ✅ Define S3 Bucket
 resource "aws_s3_bucket" "clicksend_canary_data" {
   bucket = data.aws_ssm_parameter.s3_bucket.value
+}
+
+# ✅ Retrieve Secrets from AWS SSM Parameter Store
+data "aws_ssm_parameter" "clicksend_username" {
+  name            = "/clicksend/username"
+  with_decryption = true
+}
+
+data "aws_ssm_parameter" "clicksend_api_key" {
+  name            = "/clicksend/api_key"
+  with_decryption = true
+}
+
+data "aws_ssm_parameter" "s3_bucket" {
+  name            = "/s3/bucket"
 }
 
 # ✅ IAM Role for Lambda Execution
@@ -30,14 +45,14 @@ resource "aws_iam_role" "lambda_role" {
   })
 }
 
-# ✅ IAM Policy for Lambda (S3 & CloudWatch Logs Access)
+# ✅ IAM Policy for Lambda (S3, CloudWatch, ECR Access)
 resource "aws_iam_policy" "lambda_policy" {
   name = "clicksend-canary-lambda-policy"
 
   policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [
-      {
+     {
         Effect = "Allow",
         Action = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
         Resource = "${aws_s3_bucket.clicksend_canary_data.arn}/*"
@@ -57,22 +72,31 @@ resource "aws_iam_policy" "lambda_policy" {
         ]
       },
       {
-        Effect = "Allow"
-        Action = [
-          "athena:StartQueryExecution",
-          "athena:GetQueryExecution",
-          "athena:GetQueryResults"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
+        Effect = "Allow",
         Action = [
           "glue:GetTable",
           "glue:GetTables",
           "glue:GetDatabase",
-          "glue:GetDatabases"
+          "glue:GetDatabases",
+          "glue:BatchGetPartition",
+          "glue:GetPartition",
+          "glue:CreateTable",
+          "glue:UpdateTable",
+          "glue:DeleteTable"
+        ],
+        Resource = [
+          "arn:aws:glue:us-east-1:${var.account_id}:catalog",
+          "arn:aws:glue:us-east-1:${var.account_id}:database/clicksend_canary",
+          "arn:aws:glue:us-east-1:${var.account_id}:table/clicksend_canary/sms_logs"
         ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "athena:StartQueryExecution",
+          "athena:GetQueryExecution",
+          "athena:GetQueryResults"
+        ],
         Resource = "*"
       },
       {
@@ -80,18 +104,18 @@ resource "aws_iam_policy" "lambda_policy" {
         Action = [
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage",
-          "ecr:BatchCheckLayerAvailability" ,
+          "ecr:BatchCheckLayerAvailability",
           "ecr:DescribeRepositories",
           "ecr:ListImages",
           "ecr:GetRepositoryPolicy"
         ],
-        Resource = aws_ecr_repository.clicksend_canary.arn
+        Resource = aws_ecr_repository.clicksend_canary.arn  # ✅ Fixed Terraform reference
       },
       {
         Effect = "Allow",
         Action = "ecr:GetAuthorizationToken",
         Resource = "*"
-      },
+      }
     ]
   })
 }
@@ -102,59 +126,14 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
 
-resource "aws_iam_policy" "s3_access" {
-  name        = "ClickSendCanaryS3Policy"
-  description = "Allows Lambda to write to S3"
-  policy      = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:PutObject",
-          "s3:GetObject"
-        ]
-        Resource = "arn:aws:s3:::clicksend-canary-data/*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:ListBucket"
-        ]
-        Resource = "arn:aws:s3:::clicksend-canary-data"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "s3_attach" {
-  role       = aws_iam_role.lambda_role.name
-  policy_arn = aws_iam_policy.s3_access.arn
-}
-
-# ✅ Retrieve Secrets from AWS SSM Parameter Store
-data "aws_ssm_parameter" "clicksend_username" {
-  name            = "/clicksend/username"
-  with_decryption = true
-}
-
-data "aws_ssm_parameter" "clicksend_api_key" {
-  name            = "/clicksend/api_key"
-  with_decryption = true
-}
-
-data "aws_ssm_parameter" "s3_bucket" {
-  name            = "/s3/bucket"
-}
-
-# ✅ Lambda Function Definition (Code Must Be Packaged and Uploaded to S3)
+# ✅ Lambda Function Definition
 resource "aws_lambda_function" "clicksend_canary" {
-  function_name    = "ClickSendCanary"
-  role            = aws_iam_role.lambda_role.arn
-  package_type    = "Image"
-  image_uri       = "${aws_ecr_repository.clicksend_canary.repository_url}:latest"
+  function_name = "ClickSendCanary"
+  role          = aws_iam_role.lambda_role.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.clicksend_canary.repository_url}:latest"
 
-  timeout         = 60
+  timeout = 60
 
   environment {
     variables = {
@@ -166,10 +145,9 @@ resource "aws_lambda_function" "clicksend_canary" {
   }
 }
 
-# ✅ CloudWatch Event to Trigger Lambda Every 10 Minutes
+# ✅ CloudWatch EventBridge Trigger for Lambda
 resource "aws_cloudwatch_event_rule" "every_10_minutes" {
-  name        = "clicksend-canary-schedule"
-  description = "Triggers Lambda every 10 minutes"
+  name                = "clicksend-canary-schedule"
   schedule_expression = "rate(10 minutes)"
 }
 
@@ -179,7 +157,6 @@ resource "aws_cloudwatch_event_target" "trigger_lambda" {
   arn       = aws_lambda_function.clicksend_canary.arn
 }
 
-# ✅ Allow CloudWatch to Invoke Lambda
 resource "aws_lambda_permission" "allow_cloudwatch" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
@@ -188,16 +165,20 @@ resource "aws_lambda_permission" "allow_cloudwatch" {
   source_arn    = aws_cloudwatch_event_rule.every_10_minutes.arn
 }
 
+# ✅ ECR Repository for Lambda Container
 resource "aws_ecr_repository" "clicksend_canary" {
-  name                 = "clicksend-canary"
+  name = "clicksend-canary"
+
   image_scanning_configuration {
     scan_on_push = true
   }
+
   encryption_configuration {
     encryption_type = "AES256"
   }
 }
 
+# ✅ Attach ECR Policy to Allow Lambda Access
 resource "aws_ecr_repository_policy" "clicksend_canary_ecr_policy" {
   repository = aws_ecr_repository.clicksend_canary.name
 

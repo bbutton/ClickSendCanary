@@ -21,6 +21,7 @@ upload: build
 ## 🔄 Deploy Lambda using Terraform
 deploy: upload
 	@echo "🔄 Running Terraform apply..."
+	cd $(TERRAFORM_DIR) && terraform taint aws_lambda_function.athena_failure_detection_lambda
 	cd $(TERRAFORM_DIR) && terraform init && terraform plan -out apply.plan && terraform apply apply.plan
 
 ## 🗑️ Clean up local files

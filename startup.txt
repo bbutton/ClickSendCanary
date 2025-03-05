@@ -1,0 +1,153 @@
+Here is the outcome that I'm looking for.
+
+We have this SMS service that sometimes has problems. We want to know about excessive failures in the service before our customers do. We use the clicksend API to read the historical data about how many successes and failures there were since the last time we ran, on a ten minute cycle. If we go over 3% averge we call it a warning, over 25% average we call it critical over a 30 minute period.
+
+We need to alert our support people via email if there is a problem, so they can start looking into things.
+
+Of that,
+
+* the lambda that reads the historical data and writes it into parquet format and stores in S3 is written.
+* we have a query that runs every 10 minutes that looks at the last 10 minutes of data in the parquet files and finds out how many fails and total packets there are, and writes a record for a 30-minute lookback period for each minue
+* Every 10 minutes when we wake up, we want to send an email if there is an existing warning or ciritical issue happening (us amazon's email service for this)
+* We have repair queries scheduled at midnight and 15 minutes later to force reading of the new partition (year/month/day)
+* we'd like to not bother people over and over for the same issue, so we'd like to not repeat an email every 10 minutes if conditions haven't changed.
+
+Constraints:
+
+* Athena is being used for our queries, iterating over partitions in S3
+* Athena cannot write to S3 (can it *read* from s3?)
+* Need to minimize operational costs
+
+
+
+\```markdown
+# 📡 ClickSend SMS Failure Monitoring & Alerting System
+
+## **🚀 Goal**
+We want to monitor SMS failures using ClickSend’s API and alert support via email if failures exceed:
+- **3% failure rate** = **Warning**
+- **25% failure rate** = **Critical**
+- Looking **back over the last 30 minutes**, running **every 10 minutes**.
+
+## **✅ Constraints**
+- **Athena must query S3 (but NOT write to it).**
+- **We minimize costs by using Athena and S3 efficiently.**
+- **We don’t send duplicate alerts repeatedly for the same issue.**
+
+## **🔹 What’s Already Working**
+✅ **1. Lambda `ClickSendCanary` retrieves SMS data and writes to Parquet in S3.**
+✅ **2. Athena queries run every 10 minutes to process failure rates from the last 10 minutes.**
+✅ **3. A "sliding window" view is maintained for the last 30 minutes.**
+✅ **4. Daily `MSCK REPAIR TABLE` runs at midnight + 15 min to detect new S3 partitions.**
+❌ **5. Need an alerting mechanism to notify support via Amazon SES.**
+❌ **6. Need to avoid duplicate alerts every 10 minutes for the same issue.**
+
+## **🔹 Plan to Complete the Project**
+
+### **✅ Step 1: Implement Alerting via AWS SES (Email Service)**
+- **Trigger:** Every 10 minutes, after Athena query runs.
+- **Action:** If a warning/critical condition exists, send an email **via AWS SES**.
+- **Lambda:** `AthenaFailureAlertLambda` will:
+  1. **Run the Athena query** (already working).
+  2. **Parse the result** to check failure rate.
+  3. **If the rate exceeds thresholds, send an email.**
+
+✅ **Key AWS SES Setup:**
+- **Verify an email address** in SES that will send the alerts.
+- **Set IAM policy for Lambda to allow SES `ses:SendEmail`.**
+- **Use AWS SDK (`boto3`) to send emails.**
+
+### **✅ Step 2: Prevent Duplicate Alerts (State Management)**
+We **don’t want to spam alerts every 10 minutes** for the same issue.
+📌 **Solution:** Store the last **"known alert state"** in **DynamoDB**.
+
+- If the **last alert status = current alert status**, **do NOT send another email**.
+- Only **send an email if the failure rate changes** (e.g., Warning → Critical).
+
+✅ **DynamoDB Table: `clicksend-failure-state`**
+| **Key**  | **Attribute**      | **Purpose** |
+|----------|-------------------|-------------|
+| `alert_id` | `STRING` (partition key) | Unique ID (e.g., `current_status`) |
+| `status` | `STRING` (Warning/Critical/OK) | Last known alert status |
+| `timestamp` | `STRING` | Last alert time |
+
+✅ **Lambda Workflow**
+1. Check **last alert status** from DynamoDB.
+2. If it **matches the current failure level**, do **nothing**.
+3. If it’s **different**, send an **AWS SES email** and **update DynamoDB**.
+
+### **✅ Step 3: Set Up Lambda & EventBridge to Run Every 10 Minutes**
+- **Lambda Function:** `AthenaFailureAlertLambda`
+- **Trigger:** **EventBridge Rule (rate(10 minutes))**
+- **Permissions:** IAM Role needs:
+  - `athena:StartQueryExecution`
+  - `athena:GetQueryExecution`
+  - `athena:GetQueryResults`
+  - `ses:SendEmail`
+  - `dynamodb:GetItem`
+  - `dynamodb:PutItem`
+
+✅ **Terraform Code for the EventBridge Rule**:
+```hcl
+resource "aws_cloudwatch_event_rule" "athena_alert_schedule" {
+  name                = "athena-failure-alert-schedule"
+  schedule_expression = "rate(10 minutes)"
+}
+
+resource "aws_cloudwatch_event_target" "athena_alert_lambda_target" {
+  rule = aws_cloudwatch_event_rule.athena_alert_schedule.name
+  arn  = aws_lambda_function.athena_failure_alert_lambda.arn
+}
+```
+
+### **✅ Step 4: Ensure Athena Reads from S3 (but NOT Writing)**
+✅ **Does Athena Read from S3?**
+Yes! Athena **only queries data in S3** (doesn’t modify it). We just need to ensure:
+1. **S3 bucket policy allows Athena to read** (`s3:GetObject`).
+2. **Lambda has permissions to execute Athena queries**.
+
+✅ **Fix S3 Permissions for Athena:**
+```hcl
+resource "aws_s3_bucket_policy" "clicksend_canary_results_policy" {
+  bucket = aws_s3_bucket.clicksend_canary_results.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Principal = { "Service": "athena.amazonaws.com" },
+        Action   = ["s3:GetObject", "s3:ListBucket"],
+        Resource = [
+          "arn:aws:s3:::clicksend-canary-results/athena-query-results/*",
+          "arn:aws:s3:::clicksend-canary-results/athena-query-results"
+        ]
+      }
+    ]
+  })
+}
+```
+
+## **🔹 Final Architecture**
+### **💡 What Happens Every 10 Minutes?**
+1️⃣ **Lambda wakes up** via **EventBridge Schedule (rate 10 min)**.
+2️⃣ **Athena query executes** → Reads failures in last 30 min.
+3️⃣ **Lambda checks failure percentage** in the results.
+4️⃣ If status **changed**, an **email is sent via AWS SES**.
+5️⃣ **DynamoDB stores last alert state** to prevent duplicates.
+
+## **✅ Next Steps**
+1. **Implement & Deploy `AthenaFailureAlertLambda`.**
+2. **Configure AWS SES & verify email address.**
+3. **Test alerting flow manually.**
+4. **Deploy Terraform to schedule alerts every 10 min.**
+5. **Monitor and fine-tune for operational cost efficiency.**
+
+## **🚀 Summary**
+✔ **Athena reads from S3 but doesn't write.**
+✔ **Lambda fetches Athena results & sends SES emails.**
+✔ **DynamoDB prevents repeated alerts.**
+✔ **EventBridge triggers the check every 10 minutes.**
+
+This **fully automates SMS failure detection & alerting**, preventing unnecessary spam. Let me know when you're ready to **start coding the alert Lambda**! 🚀🔥
+```
+

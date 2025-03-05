@@ -30,6 +30,7 @@
                 "iam:DeleteRole",
                 "iam:DetachRolePolicy",
                 "iam:DeletePolicy",
+                "iam:DeletePolicyVersion",
                 "iam:Get*"
             ],
             "Resource": "*"
@@ -54,6 +55,8 @@
                 "s3:DeleteObject"
             ],
             "Resource": [
+                "arn:aws:s3:::clicksend-canary-results",
+                "arn:aws:s3:::clicksend-canary-results/*",
                 "arn:aws:s3:::clicksend-canary-data",
                 "arn:aws:s3:::clicksend-canary-data/*"
             ]

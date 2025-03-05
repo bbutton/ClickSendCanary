@@ -190,7 +190,8 @@ resource "aws_iam_policy" "athena_failure_lambda_policy" {
         Action   = [
           "athena:StartQueryExecution",
           "athena:GetQueryExecution",
-          "athena:GetQueryResults"
+          "athena:GetQueryResults",
+          "athena:GetWorkGroup"
         ]
         Resource = "*"
       },
@@ -201,16 +202,32 @@ resource "aws_iam_policy" "athena_failure_lambda_policy" {
           "s3:GetObject",
           "s3:ListBucket"
         ]
-        Resource = "arn:aws:s3:::clicksend-canary-data/athena-query-results/*"
+        Resource = [
+          "arn:aws:s3:::clicksend-canary-data/athena-query-results/*",
+          "arn:aws:s3:::clicksend-canary-data/athena-query-results"
+          ]
       },
       {
         Effect   = "Allow"
         Action   = [
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
+          "glue:GetDatabase",
+          "glue:GetTable",
+          "glue:GetTables",
+          "glue:GetPartition",
+          "glue:GetPartitions"
         ]
-        Resource = "arn:aws:logs:*:*:*"
-      }
+        Resource = [
+          "arn:aws:glue:us-east-1:095750864911:catalog",
+          "arn:aws:glue:us-east-1:095750864911:database/clicksend_canary",
+          "arn:aws:glue:us-east-1:095750864911:table/clicksend_canary/sms_logs"
+        ]
+      },
+      {
+
+        Effect   = "Allow",
+        Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+        Resource = "arn:aws:logs:*:*:log-group:/aws/lambda/*:*"
+      },
     ]
   })
 }
@@ -303,7 +320,10 @@ resource "aws_iam_policy" "athena_scheduler_policy" {
           "s3:GetObject",
           "s3:ListBucket"
         ],
-        Resource = "arn:aws:s3:::clicksend-canary-data/athena-query-results/*"
+        Resource: [
+          "arn:aws:s3:::clicksend-canary-data/athena-query-results/*",
+          "arn:aws:s3:::clicksend-canary-data/athena-query-results"
+          ]
       },
       {
         Effect   = "Allow"

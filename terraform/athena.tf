@@ -107,6 +107,8 @@ resource "aws_lambda_function" "athena_failure_detection_lambda" {
     variables = {
       ATHENA_WORKGROUP = aws_athena_workgroup.clicksend_canary_workgroup.name
       ATHENA_QUERY     = aws_athena_named_query.failure_detection.id
+      SES_SOURCE_EMAIL = var.ses_source_email           # ADDED: SES source email variable
+      ALERT_RECIPIENTS = var.alert_recipients            # ADDED: SES alert recipients variable
     }
   }
 }
@@ -389,4 +391,28 @@ resource "aws_iam_policy" "athena_scheduler_policy" {
 resource "aws_iam_role_policy_attachment" "athena_scheduler_role_attach" {
   role       = aws_iam_role.athena_scheduler_role.name
   policy_arn = aws_iam_policy.athena_scheduler_policy.arn
+}
+
+# SES policy
+resource "aws_ses_email_identity" "alerts" {
+  email = var.ses_source_email
+}
+
+resource "aws_iam_role_policy" "lambda_ses_policy" {
+  name = "athena-failure-lambda-ses-policy"
+  role = aws_iam_role.athena_failure_lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
 }

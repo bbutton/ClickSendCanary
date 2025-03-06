@@ -26,6 +26,7 @@
                 "iam:PassRole",
                 "iam:List*",
                 "iam:CreatePolicy",
+                "iam:PutRolePolicy",
                 "iam:CreatePolicyVersion",
                 "iam:DeleteRole",
                 "iam:DetachRolePolicy",
@@ -241,6 +242,15 @@
                 "scheduler:ListSchedules",
                 "scheduler:CreateSchedule",
                 "scheduler:UpdateSchedule"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ses:VerifyEmailIdentity",
+                "ses:DeleteIdentity",
+                "ses:GetIdentityVerificationAttributes"
             ],
             "Resource": "*"
         }

@@ -3,7 +3,7 @@ AWS_REGION=us-east-1
 S3_BUCKET=clicksend-canary-data
 LAMBDA_NAME=AthenaFailureDetectionLambda
 LAMBDA_ZIP=athena_failure.zip
-LAMBDA_SRC=athena_failure.py
+LAMBDA_SRC=athena_failure.py src/email_alert.py
 TERRAFORM_DIR=../terraform
 
 .PHONY: all build upload deploy clean terraform

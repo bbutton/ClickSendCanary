@@ -15,3 +15,15 @@ variable "account_id" {
   type        = number
   default     = "095750864911"
 }
+
+variable "ses_source_email" {
+  description = "Source email for SES alerts"
+  type        = string
+  default     = "brian.button@copeland.com"
+}
+
+variable "alert_recipients" {
+  description = "Comma-separated list of email recipients for alerts"
+  type        = string
+  default     = "bbutton@gmail.com, brian.button@copeland.com, christian.barnett@copeland.com, scott.fritz@copeland.com"
+}

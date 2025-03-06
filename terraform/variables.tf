@@ -25,5 +25,5 @@ variable "ses_source_email" {
 variable "alert_recipients" {
   description = "Comma-separated list of email recipients for alerts"
   type        = string
-  default     = "bbutton@gmail.com, brian.button@copeland.com, christian.barnett@copeland.com, scott.fritz@copeland.com"
+  default     = "bbutton@gmail.com"
 }

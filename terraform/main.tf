@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "aws" {
-  region  = "us-east-1"
+  region = "us-east-1"
 }
 
 # ✅ Define S3 Bucket
@@ -28,7 +28,7 @@ data "aws_ssm_parameter" "clicksend_api_key" {
 }
 
 data "aws_ssm_parameter" "s3_bucket" {
-  name            = "/s3/bucket"
+  name = "/s3/bucket"
 }
 
 # ✅ IAM Role for Lambda Execution
@@ -38,9 +38,9 @@ resource "aws_iam_role" "lambda_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -52,14 +52,14 @@ resource "aws_iam_policy" "lambda_policy" {
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-     {
-        Effect = "Allow",
-        Action = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
+      {
+        Effect   = "Allow",
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
         Resource = "${aws_s3_bucket.clicksend_canary_data.arn}/*"
       },
       {
-        Effect = "Allow",
-        Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+        Effect   = "Allow",
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
         Resource = "arn:aws:logs:*:*:*"
       },
       {
@@ -109,11 +109,11 @@ resource "aws_iam_policy" "lambda_policy" {
           "ecr:ListImages",
           "ecr:GetRepositoryPolicy"
         ],
-        Resource = aws_ecr_repository.clicksend_canary.arn  # ✅ Fixed Terraform reference
+        Resource = aws_ecr_repository.clicksend_canary.arn # ✅ Fixed Terraform reference
       },
       {
-        Effect = "Allow",
-        Action = "ecr:GetAuthorizationToken",
+        Effect   = "Allow",
+        Action   = "ecr:GetAuthorizationToken",
         Resource = "*"
       }
     ]
@@ -139,8 +139,8 @@ resource "aws_lambda_function" "clicksend_canary" {
     variables = {
       CLICKSEND_USERNAME = data.aws_ssm_parameter.clicksend_username.value
       CLICKSEND_API_KEY  = data.aws_ssm_parameter.clicksend_api_key.value
-      S3_BUCKET         = data.aws_ssm_parameter.s3_bucket.value
-      S3_ENDPOINT       = "https://s3.amazonaws.com"
+      S3_BUCKET          = data.aws_ssm_parameter.s3_bucket.value
+      S3_ENDPOINT        = "https://s3.amazonaws.com"
     }
   }
 }

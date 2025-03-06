@@ -9,8 +9,8 @@ resource "aws_glue_catalog_table" "sms_logs" {
   table_type    = "EXTERNAL_TABLE"
 
   parameters = {
-    "classification"       = "parquet"
-    "parquet.compression"  = "SNAPPY"
+    "classification"      = "parquet"
+    "parquet.compression" = "SNAPPY"
   }
 
   storage_descriptor {
@@ -83,7 +83,7 @@ resource "aws_athena_workgroup" "clicksend_canary_workgroup" {
   name = "clicksend-canary-workgroup"
 
   configuration {
-    enforce_workgroup_configuration    = true
+    enforce_workgroup_configuration    = false
     publish_cloudwatch_metrics_enabled = true
     result_configuration {
       output_location = "s3://clicksend-canary-data/athena-query-results/"
@@ -159,6 +159,7 @@ resource "aws_cloudwatch_event_rule" "athena_failure_schedule" {
 }
 
 resource "aws_cloudwatch_event_target" "athena_lambda_target" {
+  target_id = "AthenaFailureLambdaTarget"
   rule = aws_cloudwatch_event_rule.athena_failure_schedule.name
   arn  = aws_lambda_function.athena_failure_detection_lambda.arn
 }
@@ -170,9 +171,9 @@ resource "aws_iam_role" "athena_failure_lambda_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -180,14 +181,14 @@ resource "aws_iam_role" "athena_failure_lambda_role" {
 # ✅ IAM Policy for Athena Failure Detection Lambda
 resource "aws_iam_policy" "athena_failure_lambda_policy" {
   name        = "athena-failure-lambda-policy"
-  description = "Allows Lambda to query Athena and log results"
+  description = "Allows Lambda to query Athena and access S3"
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "athena:StartQueryExecution",
           "athena:GetQueryExecution",
           "athena:GetQueryResults",
@@ -196,20 +197,21 @@ resource "aws_iam_policy" "athena_failure_lambda_policy" {
         Resource = "*"
       },
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "s3:PutObject",
           "s3:GetObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
         ]
         Resource = [
-          "arn:aws:s3:::clicksend-canary-data/athena-query-results/*",
-          "arn:aws:s3:::clicksend-canary-data/athena-query-results"
-          ]
+          "arn:aws:s3:::clicksend-canary-data",
+          "arn:aws:s3:::clicksend-canary-data/*"
+        ]
       },
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "glue:GetDatabase",
           "glue:GetTable",
           "glue:GetTables",
@@ -223,11 +225,14 @@ resource "aws_iam_policy" "athena_failure_lambda_policy" {
         ]
       },
       {
-
-        Effect   = "Allow",
-        Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
         Resource = "arn:aws:logs:*:*:log-group:/aws/lambda/*:*"
-      },
+      }
     ]
   })
 }
@@ -238,40 +243,86 @@ resource "aws_iam_role_policy_attachment" "athena_failure_lambda_policy_attachme
   policy_arn = aws_iam_policy.athena_failure_lambda_policy.arn
 }
 
+resource "aws_lambda_permission" "allow_eventbridge_invoke_lambda" {
+  statement_id  = "AllowEventBridgeToInvokeAthenaFailureLambda"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.athena_failure_detection_lambda.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.athena_failure_schedule.arn
+}
+
+resource "aws_s3_bucket_policy" "clicksend_canary_data_policy" {
+  bucket = aws_s3_bucket.clicksend_canary_data.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AWSCloudTrailWrite"
+        Effect    = "Allow"
+        Principal = { Service = "cloudtrail.amazonaws.com" }
+        Action    = "s3:PutObject"
+        Resource  = "arn:aws:s3:::clicksend-canary-data/AWSLogs/095750864911/*"
+        Condition = { StringEquals = { "s3:x-amz-acl" = "bucket-owner-full-control" } }
+      },
+      {
+        Sid       = "AWSCloudTrailRead"
+        Effect    = "Allow"
+        Principal = { Service = "cloudtrail.amazonaws.com" }
+        Action    = "s3:GetBucketAcl"
+        Resource  = "arn:aws:s3:::clicksend-canary-data"
+      },
+      {
+        Sid       = "AllowAthenaBucketLocationAccess"
+        Effect    = "Allow"
+        Principal = { Service = "athena.amazonaws.com" }
+        Action    = "s3:GetBucketLocation"
+        Resource  = "arn:aws:s3:::clicksend-canary-data"
+      },
+      {
+        Sid       = "AllowAthenaResultsBucketAccess"
+        Effect    = "Allow"
+        Principal = { Service = "athena.amazonaws.com" }
+        Action    = "s3:PutObject"
+        Resource  = "arn:aws:s3:::clicksend-canary-data/athena-query-results/*"
+      }
+    ]
+  })
+}
+
 #### All scheduler stuff below here ####
 
 # ✅ Schedule MSCK REPAIR TABLE at Midnight UTC
 resource "aws_scheduler_schedule" "athena_repair_schedule_midnight" {
-  name       = "athena-msck-repair-midnight"
-  flexible_time_window {
-    mode = "OFF"
-  }
-  schedule_expression = "cron(0 0 * * ? *)"  # ✅ Runs at 00:00 UTC
+  name = "athena-msck-repair-midnight"
+  flexible_time_window { mode = "OFF" }
+
+  schedule_expression = "cron(0 0 * * ? *)"
+
   target {
     arn      = "arn:aws:scheduler:::aws-sdk:athena:startQueryExecution"
     role_arn = aws_iam_role.athena_scheduler_role.arn
     input = jsonencode({
-      QueryString          = aws_athena_named_query.msck_repair.query
+      QueryString           = aws_athena_named_query.msck_repair.query
       QueryExecutionContext = { Database = aws_glue_catalog_database.clicksend_canary.name }
-      ResultConfiguration  = { OutputLocation = "s3://clicksend-canary-data/athena-query-results/" }
+      ResultConfiguration   = { OutputLocation = "s3://clicksend-canary-data/athena-query-results/" }
     })
   }
 }
 
-# ✅ Schedule a Second Repair 15 Minutes Later (Backup)
 resource "aws_scheduler_schedule" "athena_repair_schedule_backup" {
-  name       = "athena-msck-repair-backup"
-  flexible_time_window {
-    mode = "OFF"
-  }
-  schedule_expression = "cron(15 0 * * ? *)"  # ✅ Runs at 00:15 UTC
+  name = "athena-msck-repair-backup"
+  flexible_time_window { mode = "OFF" }
+
+  schedule_expression = "cron(15 0 * * ? *)"
+
   target {
     arn      = "arn:aws:scheduler:::aws-sdk:athena:startQueryExecution"
     role_arn = aws_iam_role.athena_scheduler_role.arn
     input = jsonencode({
-      QueryString          = aws_athena_named_query.msck_repair.query
-      QueryExecutionContext = { Database = aws_glue_catalog_database.clicksend_canary.name }
-      ResultConfiguration  = { OutputLocation = "s3://clicksend-canary-data/athena-query-results/" }
+      QueryString           = aws_athena_named_query.msck_repair.query,
+      QueryExecutionContext = { Database = aws_glue_catalog_database.clicksend_canary.name },
+      ResultConfiguration   = { OutputLocation = "s3://clicksend-canary-data/athena-query-results/" }
     })
   }
 }
@@ -291,9 +342,9 @@ resource "aws_iam_role" "athena_scheduler_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
+      Effect    = "Allow"
       Principal = { Service = "scheduler.amazonaws.com" }
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -307,27 +358,24 @@ resource "aws_iam_policy" "athena_scheduler_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "athena:StartQueryExecution"
         ]
         Resource = "*"
       },
       {
-        Effect = "Allow",
-        Action = [
-          "s3:PutObject",
-          "s3:GetObject",
-          "s3:ListBucket"
-        ],
-        Resource: [
-          "arn:aws:s3:::clicksend-canary-data/athena-query-results/*",
-          "arn:aws:s3:::clicksend-canary-data/athena-query-results"
-          ]
+        "Effect": "Allow",
+        "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
+        "Resource": [
+          "arn:aws:s3:::clicksend-canary-data",
+          "arn:aws:s3:::clicksend-canary-data/*",
+          "arn:aws:s3:::clicksend-canary-data/athena-query-results/*"
+        ]
       },
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]

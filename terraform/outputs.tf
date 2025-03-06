@@ -5,6 +5,6 @@ output "lambda_function_arn" {
 
 output "s3_bucket_name" {
   description = "S3 bucket for storing SMS data"
-  sensitive = true
+  sensitive   = true
   value       = aws_s3_bucket.clicksend_canary_data.bucket
 }

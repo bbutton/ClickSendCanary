@@ -52,14 +52,26 @@
                 "s3:List*",
                 "s3:Put*",
                 "s3:Get*",
-                "s3:DeleteObject"
+                "s3:DeleteObject",
+                "s3:DeleteBucketPolicy"
             ],
             "Resource": [
                 "arn:aws:s3:::clicksend-canary-results",
                 "arn:aws:s3:::clicksend-canary-results/*",
                 "arn:aws:s3:::clicksend-canary-data",
-                "arn:aws:s3:::clicksend-canary-data/*"
+                "arn:aws:s3:::clicksend-canary-data/*",
+                "arn:aws:s3:::clicksend-canary-data/sms-logs/*"
             ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "cloudtrail:LookupEvents",
+                "cloudtrail:DescribeTrails",
+                "cloudtrail:GetEventSelectors",
+                "cloudtrail:PutEventSelectors"
+            ],
+            "Resource": "*"
         },
         {
             "Effect": "Allow",

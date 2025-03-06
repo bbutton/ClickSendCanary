@@ -13,7 +13,7 @@ def send_alert_email(query_result, config, ses_client):
     failed_messages = query_result.get("failed_messages", 0)
     failure_rate = query_result.get("failure_rate", 0)
 
-     body_data = (
+    body_data = (
         f"Alert Level: {alert_level}\n"
         f"Total Messages: {total_messages}\n"
         f"Failed Messages: {failed_messages}\n"

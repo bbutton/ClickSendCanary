@@ -3,33 +3,63 @@ import os
 import json
 import time
 import traceback
+import logging
 
 from src.email_alert import send_alert_email
+from src.state_manager import StateManager
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     """Main Lambda handler that orchestrates the failure detection and alerting process."""
     try:
-        # Initialize AWS clients
+        s3_client = boto3.client("s3")
         athena_client = boto3.client("athena")
         ses_client = boto3.client("ses", region_name="us-east-1")
 
-        # Execute the Athena query to detect failures
+        state_manager = StateManager(
+            s3_client=s3_client,
+            bucket_name=os.getenv("S3_BUCKET", "clicksend-canary-data")
+        )
+
         query_result = execute_failure_detection_query(athena_client)
+        logger.info(f"Query result: {query_result}")
 
-        # Prepare email configuration
-        email_config = prepare_email_config()
+        state_info = state_manager.process_state_change(query_result)
+        if state_info["state_changed"]:
+            logger.info(f"Alert state changed from {state_info['previous_state'].get('alert_level', 'UNKNOWN')} to {state_info['current_state']['alert_level']}. Sending notification.")
 
-        # Send alert email
-        send_alert_email(query_result, email_config, ses_client)
+            email_config = prepare_email_config()
 
-        return create_success_response(query_result)
-    except AthenaQueryError as e:
-        return create_error_response(e, 500, "Athena query failed")
-    except EmailSendError as e:
-        return create_error_response(e, 500, "Failed to send alert email")
+            enhanced_result = query_result.copy()
+            enhanced_result["previous_alert_level"] = state_info["previous_state"].get("alert_level", "UNKNOWN")
+            enhanced_result["state_changed"] = True
+
+            email_response = send_alert_email(enhanced_result, email_config, ses_client)
+            logger.info(f"Email alert sent for state change")
+        else:
+            logger.info(f"No state change detected. Current alert level: {state_info['current_state']['alert_level']}")
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "message": "Function executed successfully",
+                "state_changed": state_info["state_changed"],
+                "current_state": state_info["current_state"]
+            })
+        }
+
     except Exception as e:
-        return create_error_response(e, 500, "Unexpected error occurred")
-
+        error_details = traceback.format_exc()
+        logger.error(f"Error executing function: {error_details}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({
+                "error": str(e),
+                "stack_trace": error_details
+            })
+        }
 
 def execute_failure_detection_query(athena_client):
     """Executes the SQL query to detect SMS failures and returns the parsed results."""
